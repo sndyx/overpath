@@ -111,8 +111,6 @@ out skel qt;"#,
 
         ui.separator();
 
-        ui.heading("Visualizer");
-
         ComboBox::from_label("algorithm")
             .selected_text(format!("{algo:?}"))
             .show_ui(ui, |ui| {
