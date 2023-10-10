@@ -28,7 +28,13 @@ fn main() -> Result<(), eframe::Error> {
     eframe::run_native(
         "Overpath",
         options,
-        Box::new(|_cc| Box::new(overpath::App::default())),
+        Box::new(|cc| {
+            let style = egui::Style {
+                visuals: egui::Visuals::dark(),
+                ..egui::Style::default()
+            };
+            cc.egui_ctx.set_style(style);
+            Box::new(overpath::App::default())
+        }),
     )
 }
-

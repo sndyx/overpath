@@ -1,6 +1,12 @@
 use egui::{containers::*, widgets::*, *};
 
 #[derive(Debug, PartialEq)]
+enum Mode {
+    Preset,
+    Custom,
+}
+
+#[derive(Debug, PartialEq)]
 enum Algorithm {
     AStar,
     Greedy,
@@ -9,6 +15,7 @@ enum Algorithm {
 
 #[derive(PartialEq)]
 pub struct App {
+    mode: Mode,
     area: String,
     algo: Algorithm,
     paused: bool,
@@ -19,6 +26,7 @@ pub struct App {
 impl Default for App {
     fn default() -> Self {
         Self {
+            mode: Mode::Preset,
             area: "Chicago".to_string(),
             algo: Algorithm::AStar,
             paused: false,
@@ -29,9 +37,9 @@ impl Default for App {
 }
 
 impl eframe::App for App {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::CentralPanel::default()
-            .frame(egui::Frame::dark_canvas(&ctx.style()))
+    fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
+        CentralPanel::default()
+            .frame(Frame::dark_canvas(&ctx.style()))
             .show(ctx, |ui| {
                 self.ui(ui);
             });
@@ -50,6 +58,7 @@ impl App {
 
     fn options_ui(&mut self, ui: &mut Ui) {
         let Self {
+            mode,
             area,
             algo,
             paused,
@@ -57,35 +66,54 @@ impl App {
             code,
         } = self;
 
-        ui.add(egui::TextEdit::singleline(area).hint_text("Road selection area"));
+        ui.horizontal(|ui| {
+            ui.selectable_value(mode, Mode::Preset, "Preset");
+            let clicked = ui.selectable_value(mode, Mode::Custom, "Custom").clicked();
 
-        let theme = egui_extras::syntax_highlighting::CodeTheme::from_memory(ui.ctx());
-        let mut layouter = |ui: &egui::Ui, string: &str, wrap_width: f32| {
-            let mut layout_job =
-                egui_extras::syntax_highlighting::highlight(ui.ctx(), &theme, string, "c");
-            layout_job.wrap.max_width = wrap_width;
-            ui.fonts(|f| f.layout_job(layout_job))
-        };
+            if clicked {
+                *code = format!(
+r#"[out:json];
+area[name="{}"]->.searchArea;
+way(area.searchArea)["highway"];
+out body;
+>;
+out skel qt;"#,
+                    area
+                )
+            }
 
-        ui.collapsing("Advanced", |ui| {
-            ui.group(|ui| {
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    ui.add(
-                        egui::TextEdit::multiline(&mut self.code)
-                            .font(egui::TextStyle::Monospace) // for cursor height
-                            .code_editor()
-                            .desired_rows(3)
-                            .lock_focus(true)
-                            .desired_width(f32::INFINITY)
-                            .layouter(&mut layouter),
-                    );
-                });
-            });
+            ui.label("Selection location");
         });
+
+        if self.mode == Mode::Preset {
+            ui.add(TextEdit::singleline(area).hint_text("Enter a city..."));
+        } else {
+            let theme = egui_extras::syntax_highlighting::CodeTheme::from_memory(ui.ctx());
+            let mut layouter = |ui: &Ui, string: &str, wrap_width: f32| {
+                let mut layout_job =
+                    egui_extras::syntax_highlighting::highlight(ui.ctx(), &theme, string, "c");
+                layout_job.wrap.max_width = wrap_width;
+                ui.fonts(|f| f.layout_job(layout_job))
+            };
+
+            ScrollArea::vertical().show(ui, |ui| {
+                ui.add(
+                    TextEdit::multiline(code)
+                        .font(egui::TextStyle::Monospace) // for cursor height
+                        .code_editor()
+                        .desired_rows(1)
+                        .lock_focus(true)
+                        .desired_width(f32::INFINITY)
+                        .layouter(&mut layouter),
+                );
+            });
+        }
 
         ui.separator();
 
-        egui::ComboBox::from_label("algorithm")
+        ui.heading("Visualizer");
+
+        ComboBox::from_label("algorithm")
             .selected_text(format!("{algo:?}"))
             .show_ui(ui, |ui| {
                 ui.style_mut().wrap = Some(false);
@@ -97,6 +125,6 @@ impl App {
 
         ui.add(Slider::new(speed, 0.1..=10.0).text("speed"));
 
-        egui::reset_button(ui, self);
+        reset_button(ui, self);
     }
 }
