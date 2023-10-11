@@ -1,6 +1,6 @@
 use eframe::wasm_bindgen::{self, prelude::*};
 
-use crate::app::App;
+use crate::App;
 
 /// Our handle to the web app from JavaScript.
 #[derive(Clone)]
@@ -30,7 +30,14 @@ impl WebHandle {
             .start(
                 canvas_id,
                 eframe::WebOptions::default(),
-                Box::new(|cc| Box::new(App::default())),
+                Box::new(|cc| {
+                    let style = egui::Style {
+                        visuals: egui::Visuals::dark(),
+                        ..egui::Style::default()
+                    };
+                    cc.egui_ctx.set_style(style);
+                    Box::new(App::default())
+                }),
             )
             .await
     }

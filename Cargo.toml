@@ -6,27 +6,13 @@ edition = "2021"
 [lib]
 crate-type = ["cdylib", "rlib"]
 
-
 [features]
-default = ["glow", "persistence"]
-
-# image_viewer adds about 0.9 MB of WASM
-web_app = ["http", "persistence", "web_screen_reader"]
-
-http = ["ehttp", "image", "poll-promise"]
-image_viewer = ["image", "rfd"]
-persistence = ["eframe/persistence", "egui/persistence", "serde"]
-web_screen_reader = ["eframe/web_screen_reader"]                  # experimental
-serde = ["dep:serde", "egui/serde"]
-
+default = ["glow"]
+web_app = ["http"]
+http = ["ehttp"]
 glow = ["eframe/glow"]
-wgpu = ["eframe/wgpu"]
 
 [dependencies]
-chrono = { version = "0.4", default-features = false, features = [
-    "js-sys",
-    "wasmbind",
-] }
 eframe = { version = "0.23.0", default-features = false }
 egui = { version = "0.23.0", features = [
     "callstack",
@@ -39,15 +25,6 @@ log = { version = "0.4", features = ["std"] }
 
 # feature "http":
 ehttp = { version = "0.3.1", optional = true }
-image = { version = "0.24", optional = true, default-features = false, features = [
-    "jpeg",
-    "png",
-] }
-poll-promise = { version = "0.3", optional = true, default-features = false }
-
-# feature "persistence":
-serde = { version = "1", optional = true, features = ["derive"] }
-
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

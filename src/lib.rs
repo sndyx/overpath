@@ -1,4 +1,5 @@
 mod app;
-mod web;
-
 pub use app::App;
+
+#[cfg(target_arch = "wasm32")]
+mod web;
