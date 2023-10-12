@@ -1,4 +1,6 @@
+use std::fs;
 use egui::{containers::*, widgets::*, *};
+use crate::node::Map;
 
 #[derive(Debug, PartialEq)]
 enum Mode {
@@ -21,10 +23,13 @@ pub struct App {
     paused: bool,
     speed: f32,
     code: String,
+    map: Map,
 }
 
 impl Default for App {
     fn default() -> Self {
+        let contents = fs::read_to_string("res/export.json")
+            .expect("Couldn't find export.json!");
         Self {
             mode: Mode::Preset,
             area: "Chicago".to_string(),
@@ -32,6 +37,7 @@ impl Default for App {
             paused: false,
             speed: 1.0,
             code: "".to_string(),
+            map: Map::from_json(contents.as_str())
         }
     }
 }
@@ -48,6 +54,19 @@ impl eframe::App for App {
 
 impl App {
     fn ui(&mut self, ui: &mut Ui) {
+        if !self.paused {
+            ui.ctx().request_repaint();
+        }
+
+        let painter = Painter::new(
+            ui.ctx().clone(),
+            ui.layer_id(),
+            ui.available_rect_before_wrap(),
+        );
+        self.paint(&painter);
+
+        ui.expand_to_include_rect(painter.clip_rect());
+
         Frame::popup(ui.style())
             .stroke(Stroke::NONE)
             .show(ui, |ui| {
@@ -61,9 +80,10 @@ impl App {
             mode,
             area,
             algo,
-            paused,
+            paused: _paused,
             speed,
             code,
+            map: _map,
         } = self;
 
         ui.horizontal(|ui| {
@@ -124,5 +144,41 @@ out skel qt;"#,
         ui.add(Slider::new(speed, 0.1..=10.0).text("speed"));
 
         reset_button(ui, self);
+    }
+
+    fn paint(&mut self, painter: &Painter) {
+        let mut shapes: Vec<Shape> = Vec::new();
+
+        let rect = painter.clip_rect();
+        let to_screen = emath::RectTransform::from_to(
+            Rect::from_center_size(Pos2::ZERO, rect.square_proportions()),
+            rect,
+        );
+
+        let mut paint_line = |points: [Pos2; 2], color: Color32, width: f32| {
+            let line = [to_screen * points[0], to_screen * points[1]];
+
+            if rect.intersects(Rect::from_two_pos(line[0], line[1])) {
+                shapes.push(Shape::line_segment(line, (width, color)));
+            }
+        };
+
+        let point = |lat: f32, lon: f32, map: &Map| {
+            let x_scale = map.x1 / map.x2;
+            let y_scale = map.y1 / map.y2;
+            let max = if x_scale > y_scale { x_scale } else { y_scale };
+            return pos2(lat / max, lon / max);
+        };
+
+        for node in self.map.nodes.iter() {
+            for connection in node.1.connections.iter() {
+                let c_node = self.map.nodes.get(connection).expect("Unknown node.");
+                let p1 = point(node.1.lat, node.1.lon, &self.map);
+                let p2 = point(c_node.lat, c_node.lon, &self.map);
+                paint_line([p1, p2], Color32::RED, 2.0);
+            }
+        }
+
+        painter.extend(shapes);
     }
 }
